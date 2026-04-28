@@ -16,7 +16,7 @@ data class Product(
     val discountPercentage: Double,
     val rating: Double,
     val stock: Int,
-    val brand: String,
+    val brand: String? = null,
     val category: String,
     val thumbnail: String,
     val images: List<String>,
