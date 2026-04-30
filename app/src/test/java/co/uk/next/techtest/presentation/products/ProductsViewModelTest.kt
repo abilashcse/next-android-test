@@ -44,6 +44,9 @@ class ProductsViewModelTest {
                         )
                     )
 
+                override suspend fun searchProducts(query: String, limit: Int, skip: Int): Result<ProductsPage> =
+                    error("not used")
+
                 override suspend fun getProductDetails(id: Int) =
                     error("not used")
             }
@@ -64,6 +67,9 @@ class ProductsViewModelTest {
             repository = object : co.uk.next.techtest.domain.repository.ProductsRepository {
                 override suspend fun getProductsPage(limit: Int, skip: Int): Result<ProductsPage> =
                     Result.failure(IllegalStateException("boom"))
+
+                override suspend fun searchProducts(query: String, limit: Int, skip: Int): Result<ProductsPage> =
+                    error("not used")
 
                 override suspend fun getProductDetails(id: Int) =
                     error("not used")
@@ -105,6 +111,9 @@ class ProductsViewModelTest {
                     )
                 }
 
+                override suspend fun searchProducts(query: String, limit: Int, skip: Int): Result<ProductsPage> =
+                    error("not used")
+
                 override suspend fun getProductDetails(id: Int) =
                     error("not used")
             }
@@ -145,6 +154,9 @@ class ProductsViewModelTest {
                             limit = limit
                         )
                     )
+
+                override suspend fun searchProducts(query: String, limit: Int, skip: Int): Result<ProductsPage> =
+                    error("not used")
 
                 override suspend fun getProductDetails(id: Int) = error("not used")
             }
@@ -192,6 +204,9 @@ class ProductsViewModelTest {
                     )
                 }
 
+                override suspend fun searchProducts(query: String, limit: Int, skip: Int): Result<ProductsPage> =
+                    error("not used")
+
                 override suspend fun getProductDetails(id: Int) = error("not used")
             }
         )
@@ -236,6 +251,9 @@ class ProductsViewModelTest {
                         Result.failure(IllegalStateException("boom"))
                     }
                 }
+
+                override suspend fun searchProducts(query: String, limit: Int, skip: Int): Result<ProductsPage> =
+                    error("not used")
 
                 override suspend fun getProductDetails(id: Int) = error("not used")
             }

@@ -12,6 +12,7 @@ import androidx.compose.ui.window.DialogProperties
 import co.uk.next.techtest.core.ui.shell.PlaceholderScreen
 import co.uk.next.techtest.presentation.productdetails.ProductDetailsScreen
 import co.uk.next.techtest.presentation.products.ProductsScreen
+import co.uk.next.techtest.presentation.search.SearchScreen
 
 @Composable
 fun TechTestNavHost(
@@ -29,7 +30,11 @@ fun TechTestNavHost(
             )
         }
 
-        composable(Routes.Search) { PlaceholderScreen(title = "Search") }
+        composable(Routes.Search) {
+            SearchScreen(
+                onProductClick = { id -> navController.navigate(Routes.productDetails(id)) }
+            )
+        }
         composable(Routes.Saved) { PlaceholderScreen(title = "Saved") }
         composable(Routes.Bag) { PlaceholderScreen(title = "Bag") }
         composable(Routes.Account) { PlaceholderScreen(title = "Account") }

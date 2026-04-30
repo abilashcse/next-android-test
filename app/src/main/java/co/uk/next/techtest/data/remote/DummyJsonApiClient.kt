@@ -41,5 +41,26 @@ class DummyJsonApiClient(
         val r = response!!
         return r
     }
+
+    suspend fun searchProductsPage(
+        query: String,
+        limit: Int,
+        skip: Int,
+        select: String? = null
+    ): ProductsListResponseDto {
+        var response: ProductsListResponseDto? = null
+        measureTimeMillis {
+            response =
+                httpClient.get("$baseUrl/products/search") {
+                    parameter("q", query)
+                    parameter("limit", limit)
+                    parameter("skip", skip)
+                    if (!select.isNullOrBlank()) {
+                        parameter("select", select)
+                    }
+                }.body()
+        }
+        return response!!
+    }
 }
 

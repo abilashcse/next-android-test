@@ -23,6 +23,9 @@ class UseCasesTest {
                     return Result.success(expected)
                 }
 
+                override suspend fun searchProducts(query: String, limit: Int, skip: Int): Result<ProductsPage> =
+                    error("not used")
+
                 override suspend fun getProductDetails(id: Int): Result<ProductDetails> =
                     error("not used")
             }
@@ -68,6 +71,9 @@ class UseCasesTest {
                 override suspend fun getProductsPage(limit: Int, skip: Int): Result<ProductsPage> =
                     error("not used")
 
+                override suspend fun searchProducts(query: String, limit: Int, skip: Int): Result<ProductsPage> =
+                    error("not used")
+
                 override suspend fun getProductDetails(id: Int): Result<ProductDetails> {
                     seenId = id
                     return Result.success(expected)
@@ -78,6 +84,38 @@ class UseCasesTest {
         val result = useCase(id = 99)
 
         assertEquals(99, seenId)
+        assertEquals(expected, result.getOrNull())
+    }
+
+    @Test
+    fun `SearchProductsUseCase delegates to repository and returns result`() = runTest {
+        var seenQuery: String? = null
+        var seenLimit: Int? = null
+        var seenSkip: Int? = null
+        val expected = ProductsPage(items = emptyList(), total = 5, skip = 0, limit = 10)
+
+        val repo =
+            object : ProductsRepository {
+                override suspend fun getProductsPage(limit: Int, skip: Int): Result<ProductsPage> =
+                    error("not used")
+
+                override suspend fun searchProducts(query: String, limit: Int, skip: Int): Result<ProductsPage> {
+                    seenQuery = query
+                    seenLimit = limit
+                    seenSkip = skip
+                    return Result.success(expected)
+                }
+
+                override suspend fun getProductDetails(id: Int): Result<ProductDetails> =
+                    error("not used")
+            }
+
+        val useCase = SearchProductsUseCase(repository = repo)
+        val result = useCase(query = "phone", limit = 10, skip = 0)
+
+        assertEquals("phone", seenQuery)
+        assertEquals(10, seenLimit)
+        assertEquals(0, seenSkip)
         assertEquals(expected, result.getOrNull())
     }
 }

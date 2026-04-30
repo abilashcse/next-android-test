@@ -1,6 +1,7 @@
 package co.uk.next.techtest.core.ui.shell
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -12,6 +13,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -32,16 +34,18 @@ import androidx.navigation.compose.rememberNavController
 import co.uk.next.techtest.R
 import co.uk.next.techtest.core.navigation.Routes
 import co.uk.next.techtest.core.navigation.TechTestNavHost
-import co.uk.next.techtest.core.ui.testing.surfaceArgb
+import co.uk.next.techtest.core.network.NetworkMonitor
 import co.uk.next.techtest.core.ui.testing.onSurfaceArgb
-import androidx.compose.material3.MaterialTheme
+import co.uk.next.techtest.core.ui.testing.surfaceArgb
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppScaffold(
     modifier: Modifier = Modifier,
-    viewModel: AppShellViewModel = koinViewModel()
+    viewModel: AppShellViewModel = koinViewModel(),
+    networkMonitor: NetworkMonitor = koinInject()
 ) {
     val navController = rememberNavController()
     val selected by viewModel.selectedDestination.collectAsState()
@@ -52,73 +56,84 @@ fun AppScaffold(
     val onSurfaceArgbValue = MaterialTheme.colorScheme.onSurface.toArgb()
     val surfaceArgbValue = MaterialTheme.colorScheme.surface.toArgb()
 
-    Scaffold(
-        modifier = modifier
-            .fillMaxSize()
-            .testTag("app_root")
-            .semantics {
-                onSurfaceArgb = onSurfaceArgbValue
-                surfaceArgb = surfaceArgbValue
-            },
-        contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = {
-            if (shouldShowChrome) {
-                CenterAlignedTopAppBar(
-                    modifier = Modifier.testTag("top_app_bar"),
-                    title = {
-                        Image(
-                            painter = painterResource(id = R.drawable.next_tech_test_wordmark),
-                            contentDescription = "Next Tech Test",
-                            modifier = Modifier
-                                .height(30.dp)
-                                .testTag("top_app_bar_logo"),
-                            contentScale = ContentScale.Fit
-                        )
-                    },
-                    actions = {
-                        IconButton(onClick = { /* cart placeholder */ }) {
-                            Icon(
-                                imageVector = Icons.Outlined.ShoppingCart,
-                                contentDescription = "Cart"
-                            )
-                        }
-                    }
-                )
-            }
-        },
-        bottomBar = {
-            if (shouldShowChrome) {
-                NavigationBar {
-                    BottomNavDestination.entries.forEach { destination ->
-                        NavigationBarItem(
-                            selected = selected == destination,
-                            onClick = {
-                                viewModel.onDestinationSelected(destination)
-                                navController.navigate(destination.route) {
-                                    launchSingleTop = true
-                                    restoreState = true
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                }
-                            },
-                            icon = {
-                                Icon(
-                                    imageVector = destination.icon,
-                                    contentDescription = destination.label
+    val isOnline by networkMonitor.isOnline.collectAsState()
+
+    Box(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .testTag("app_root")
+                .semantics {
+                    onSurfaceArgb = onSurfaceArgbValue
+                    surfaceArgb = surfaceArgbValue
+                }
+    ) {
+        if (!isOnline) {
+            OfflineFullScreen(onRetry = { networkMonitor.refresh() })
+        } else {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                contentWindowInsets = WindowInsets.safeDrawing,
+                topBar = {
+                    if (shouldShowChrome) {
+                        CenterAlignedTopAppBar(
+                            modifier = Modifier.testTag("top_app_bar"),
+                            title = {
+                                Image(
+                                    painter = painterResource(id = R.drawable.next_tech_test_wordmark),
+                                    contentDescription = "Next Tech Test",
+                                    modifier =
+                                        Modifier
+                                            .height(30.dp)
+                                            .testTag("top_app_bar_logo"),
+                                    contentScale = ContentScale.Fit
                                 )
                             },
-                            label = { Text(destination.label) }
+                            actions = {
+                                IconButton(onClick = { /* cart placeholder */ }) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.ShoppingCart,
+                                        contentDescription = "Cart"
+                                    )
+                                }
+                            }
                         )
                     }
+                },
+                bottomBar = {
+                    if (shouldShowChrome) {
+                        NavigationBar {
+                            BottomNavDestination.entries.forEach { destination ->
+                                NavigationBarItem(
+                                    selected = selected == destination,
+                                    onClick = {
+                                        viewModel.onDestinationSelected(destination)
+                                        navController.navigate(destination.route) {
+                                            launchSingleTop = true
+                                            restoreState = true
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                        }
+                                    },
+                                    icon = {
+                                        Icon(
+                                            imageVector = destination.icon,
+                                            contentDescription = destination.label
+                                        )
+                                    },
+                                    label = { Text(destination.label) }
+                                )
+                            }
+                        }
+                    }
                 }
+            ) { innerPadding ->
+                TechTestNavHost(
+                    navController = navController,
+                    modifier = Modifier.padding(innerPadding)
+                )
             }
         }
-    ) { innerPadding ->
-        TechTestNavHost(
-            navController = navController,
-            modifier = Modifier.padding(innerPadding)
-        )
     }
 }
-

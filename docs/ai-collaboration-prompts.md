@@ -1,6 +1,6 @@
 # Reusable AI collaboration prompts (Lead Android Engineer)
 
-This document collects **prompt templates** used while shaping this codebase. Treat them as **starting points**: paste into your assistant, fill the placeholders, and **adapt constraints** (libraries, APIs, naming) to the target project. The shipped app combines assistant output with **human review and refactors**—these prompts are tooling, not a substitute for architectural judgment.
+This document collects **prompt templates** used while shaping this codebase (including **product search** on DummyJSON `GET /products/search`, **app-wide offline** via `NetworkMonitor` + full-screen gate in `AppScaffold`, and **shared PLP/search grids**). Treat them as **starting points**: paste into your assistant, fill the placeholders, and **adapt constraints** (libraries, APIs, naming) to the target project. The shipped app combines assistant output with **human review and refactors**—these prompts are tooling, not a substitute for architectural judgment.
 
 ---
 
@@ -34,8 +34,10 @@ Jetpack Compose app (single `app` module for now—not multi-module unless I ask
 
 Establish a clean layering mental model compatible with scalability later:
 
-- `core/` — theme, navigation host wiring, DI registration, shared UI primitives
-- `core/ui/shell/` — app chrome ONLY: top bar, bottom nav, scaffold insets; no feature logic
+- `core/` — theme, navigation host wiring, DI registration, shared UI primitives; optional
+  **`NetworkMonitor`** (connectivity abstraction; Android impl uses `ConnectivityManager`)
+- `core/ui/shell/` — app chrome ONLY: top bar, bottom nav, scaffold insets; optional **full-screen
+  offline gate** when `!isOnline` (no chrome / NavHost underneath until back online)
 - `data/` — DTOs aligned with {{PRIMARY_API}}, remote client built with {{NETWORK_CLIENT}},
   repository implementation; map DTO → domain explicitly
 - `domain/` — domain models (non-nullable where the product requires it), repository ports,
@@ -76,10 +78,73 @@ Hard rules:
   (modal product details, auth, onboarding)—implement via a small ViewModel or derived state,
   not ad-hoc boolean drilling through every composable without need.
 - Placeholder tabs remain minimal—no fake networking.
+- If the product includes **search** or other real tabs, wire them in the same `NavHost`; keep
+  placeholders only where explicitly out of scope.
 
 Output: scaffold composable skeleton, navigation contract (which routes hide chrome),
 and wiring from `MainActivity`. Match existing imports and theme usage in this repo unless
 greenfield—in which case scaffold from Material3 defaults first.
+```
+
+---
+
+## 2b. App-wide offline (full screen, not per-feature)
+
+Use when “no network” must block the **entire** app (including over PDP), not a snackbar on one tab.
+
+```
+Lead Android task: app-wide connectivity gate at the shell root.
+
+Requirements:
+- Introduce `NetworkMonitor` exposing `StateFlow<Boolean>` (or equivalent) for **isOnline**.
+- Android implementation: `ConnectivityManager.registerDefaultNetworkCallback`; treat loss of a
+  usable default network as offline; document whether you require NET_CAPABILITY_VALIDATED vs
+  INTERNET-only (trade-off: stricter vs emulator flakiness).
+- `AppScaffold` (or root below `setContent`): `Box(fillMaxSize())` — when offline, show a single
+  **OfflineFullScreen** (title, body, Retry calling `monitor.refresh()` / re-query capabilities).
+  Do NOT render `Scaffold` top/bottom bar or `NavHost` under the offline UI.
+- When online returns, **do not** clear the nav back stack by default.
+- **Koin**: `single<NetworkMonitor> { AndroidNetworkMonitor(androidContext()) }`; tests/androidTest
+  bind a **FakeNetworkMonitor** (toggling `isOnline`) so JVM/instrumentation stay deterministic.
+- Manifest: add `ACCESS_NETWORK_STATE` if you read active network capabilities.
+
+Per-screen ViewModels should keep **generic** HTTP/parse errors + Retry; do not duplicate long
+“no internet” copy on Search/PLP unless you explicitly want a fallback when monitor and transport disagree.
+```
+
+---
+
+## 2c. Product search (API-backed, same grid as PLP)
+
+Use when adding a **Search** tab or route that queries a search endpoint and reuses catalogue tiles.
+
+```
+Feature: product search (Lead Android, MVVM + UDF).
+
+API:
+- Add client method: GET `{{PRIMARY_API}}/products/search` (or your backend equivalent) with
+  `q`, `limit`, `skip`, optional `select` to shrink payloads.
+- Repository: `searchProducts(query, limit, skip): Result<ProductsPage>` reusing the same domain
+  row type as PLP (`ProductSummary` or equivalent).
+- Use case: thin wrapper calling repository.
+
+Presentation:
+- `SearchViewModel` + sealed `SearchUiState`: Idle (no request yet), Loading, Success (items,
+  favourites, append flag, endReached, **activeQuery** for empty-state copy), Error (message +
+  activeQuery + Retry re-runs last query).
+- Debounced query (~300–400 ms) after typing stops; IME Search action submits immediately; clear
+  resets to Idle without calling the API for blank/whitespace-only input.
+- Pagination: mirror PLP (increment `skip` by accumulated item count until `items.size >= total`).
+- **DRY**: extract `ProductResultsGrid` (LazyVerticalGrid + scroll threshold + append indicator)
+  shared by PLP and Search; keep column-count math in one place (`gridColumnCount` helper).
+
+Navigation:
+- Search tab composable receives `onProductClick(id)` → same PDP route as PLP.
+
+Tests:
+- MockEngine asserts path, `q`, and `select` for search.
+- ViewModel tests: idle, debounced success, empty results, pagination, error + retry, stale
+  generation when query changes mid-flight.
 ```
 
 ---
@@ -170,6 +235,8 @@ Unit (JVM):
 
 androidTest where behavior is integration/regression-heavy:
 - Custom `Application` + test runner swaps {{DI_FRAMEWORK}} graph to fakes (deterministic fixtures).
+- Include **NetworkMonitor** fake (e.g. always online) so shell offline UI does not block unrelated
+  tests unless a case explicitly toggles offline.
 - One regression suite for known bugs/regressions with semantics-based selectors (prefer test tags
   or unified semantics wrappers over brittle strings).
 
@@ -221,4 +288,4 @@ Acceptance checks I will apply: {{BULLETED_CHECKS}}
 
 ## Closing note
 
-These prompts prioritize **constraints a staff engineer would articulate**: clear boundaries, JVM-safe boundaries for tests, route-driven chrome, scrubbable motion, and honest limits of bitmap-based launcher art. Tune tone and tooling names per team; swap `{{.*}}` sections for your next app without importing this project’s incidental API specifics unless you intend to.
+These prompts prioritize **constraints a staff engineer would articulate**: clear boundaries, JVM-safe boundaries for tests, route-driven chrome, scrubbable motion, **search + pagination** aligned with list endpoints, **shell-level offline** vs per-screen errors, and honest limits of bitmap-based launcher art. Tune tone and tooling names per team; swap `{{.*}}` sections for your next app without importing this project’s incidental API specifics unless you intend to.

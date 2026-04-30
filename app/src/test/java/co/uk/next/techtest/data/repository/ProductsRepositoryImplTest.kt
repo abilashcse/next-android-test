@@ -137,5 +137,55 @@ class ProductsRepositoryImplTest {
         assertEquals("now", product.meta?.createdAt)
         assertEquals(1.0, product.dimensions?.width ?: 0.0, 0.0)
     }
+
+    @Test
+    fun `searchProducts calls search endpoint with q and select`() = runTest {
+        val engine =
+            MockEngine { request: HttpRequestData ->
+                val url: Url = request.url
+                assertEquals("/products/search", url.encodedPath)
+                assertEquals("phone", url.parameters["q"])
+                assertTrue(url.parameters["select"]?.contains("thumbnail") == true)
+                respond(
+                    content =
+                        """
+                        {
+                          "products": [
+                            {
+                              "id": 2,
+                              "title": "Phone",
+                              "price": 99.0,
+                              "brand": "B",
+                              "thumbnail": "https://example.com/p.png",
+                              "discountPercentage": 0.0,
+                              "rating": 4.0,
+                              "stock": 3
+                            }
+                          ],
+                          "total": 1,
+                          "skip": 0,
+                          "limit": 30
+                        }
+                        """.trimIndent(),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf("Content-Type" to listOf(ContentType.Application.Json.toString()))
+                )
+            }
+
+        val client =
+            HttpClient(engine) {
+                install(ContentNegotiation) {
+                    json(Json { ignoreUnknownKeys = true })
+                }
+            }
+
+        val api = DummyJsonApiClient(httpClient = client, baseUrl = "https://test")
+        val repo = ProductsRepositoryImpl(apiClient = api)
+
+        val result = repo.searchProducts(query = "phone", limit = 30, skip = 0).getOrThrow()
+        assertEquals(1, result.total)
+        assertEquals(1, result.items.size)
+        assertEquals("Phone", result.items.first().title)
+    }
 }
 

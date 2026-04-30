@@ -4,6 +4,7 @@ import co.uk.next.techtest.MainDispatcherRule
 import co.uk.next.techtest.domain.model.Dimensions
 import co.uk.next.techtest.domain.model.Meta
 import co.uk.next.techtest.domain.model.ProductDetails
+import co.uk.next.techtest.domain.model.ProductsPage
 import co.uk.next.techtest.domain.model.Review
 import co.uk.next.techtest.domain.usecase.GetProductDetailsUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,6 +26,9 @@ class ProductDetailsViewModelTest {
         val useCase = GetProductDetailsUseCase(
             repository = object : co.uk.next.techtest.domain.repository.ProductsRepository {
                 override suspend fun getProductsPage(limit: Int, skip: Int) =
+                    error("not used")
+
+                override suspend fun searchProducts(query: String, limit: Int, skip: Int): Result<ProductsPage> =
                     error("not used")
 
                 override suspend fun getProductDetails(id: Int): Result<ProductDetails> =
@@ -83,6 +87,9 @@ class ProductDetailsViewModelTest {
         val useCase = GetProductDetailsUseCase(
             repository = object : co.uk.next.techtest.domain.repository.ProductsRepository {
                 override suspend fun getProductsPage(limit: Int, skip: Int) =
+                    error("not used")
+
+                override suspend fun searchProducts(query: String, limit: Int, skip: Int): Result<ProductsPage> =
                     error("not used")
 
                 override suspend fun getProductDetails(id: Int): Result<ProductDetails> =

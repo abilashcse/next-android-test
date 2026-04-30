@@ -6,6 +6,7 @@ import co.uk.next.techtest.domain.model.ProductSummary
 
 interface ProductsRepository {
     suspend fun getProductsPage(limit: Int, skip: Int): Result<ProductsPage>
+    suspend fun searchProducts(query: String, limit: Int, skip: Int): Result<ProductsPage>
     suspend fun getProductDetails(id: Int): Result<ProductDetails>
 }
 

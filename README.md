@@ -9,10 +9,11 @@ This repository is a Jetpack Compose Android app that consumes DummyJSON’s Pro
 - **Networking**: **Ktor** + `kotlinx.serialization`
 - **Image loading**: **Coil (compose)**
 - **Navigation**: `navigation-compose`
-- **Testing**: JUnit + `kotlinx-coroutines-test`
+- **Connectivity**: `ConnectivityManager` default network callback (`NetworkMonitor`) for app-wide offline UI
+- **Testing**: JUnit + `kotlinx-coroutines-test`; `androidTest` with custom `Application` / runner and Koin test doubles
 
 ## Architecture overview (high level)
-- **`core/`**: DI modules, navigation, theme
+- **`core/`**: DI modules, navigation, theme, **network connectivity** (`NetworkMonitor`)
 - **`core/ui/shell/`**: app chrome (top app bar + bottom navigation) + shell state
 - **`data/`**: DTOs + API client + repository implementation
 - **`domain/`**: models + repository interface + use cases
@@ -23,20 +24,25 @@ This repository is a Jetpack Compose Android app that consumes DummyJSON’s Pro
 ```mermaid
 flowchart TD
   MainActivity-->AppScaffold
+  AppScaffold-->NetworkMonitor
   AppScaffold-->TopBarAndBottomNav
   AppScaffold-->TechTestNavHost
 
   TechTestNavHost-->ProductsScreen
+  TechTestNavHost-->SearchScreen
   TechTestNavHost-->ProductDetailsScreen
   TechTestNavHost-->PlaceholderTabs
 
   ProductsScreen-->ProductsViewModel
+  SearchScreen-->SearchViewModel
   ProductDetailsScreen-->ProductDetailsViewModel
 
   ProductsViewModel-->GetProductsPageUseCase
+  SearchViewModel-->SearchProductsUseCase
   ProductDetailsViewModel-->GetProductDetailsUseCase
 
   GetProductsPageUseCase-->ProductsRepository
+  SearchProductsUseCase-->ProductsRepository
   GetProductDetailsUseCase-->ProductsRepository
 
   ProductsRepository-->DummyJsonApiClient
@@ -46,7 +52,7 @@ flowchart TD
 ## Implemented features
 
 ### User Stories
-Completed: **User Stories 1, 2, 4, and 5**. **User Story 3** (enhanced search) is still outstanding — see **Pending user stories / enhancements** below.
+Completed: **User Stories 1, 2, 3, 4, and 5**.
 
 - **User Story 1 (Priority 1) – List Tile UI**
   - Product tile shows **thumbnail**, **title (max 2 lines)**, **brand**, and **price**.
@@ -57,6 +63,14 @@ Completed: **User Stories 1, 2, 4, and 5**. **User Story 3** (enhanced search) i
   - PLP is a **responsive grid** using `LazyVerticalGrid` with a calculated **fixed column count** to guarantee **at least 2 columns** on phones and scale up on larger screens.
   - Uses stable item keys for smooth scrolling.
   - **Infinite scroll pagination** using DummyJSON `limit` + `skip` (page size 30).
+
+- **User Story 3 (Priority 4) – Enhanced product search — completed**
+  - **Search** tab: query field with **debounced** requests (~350 ms) and **IME search**; clear control.
+  - Calls DummyJSON **`GET /products/search?q=...`** with the same **`limit` / `skip`** pagination and PLP field `select` as the product list endpoint.
+  - Results reuse the **same grid + tile** behaviour as the PLP; opening a tile navigates to the same PDP route as Home.
+  - **No results** copy includes the active query (some terms, e.g. “jeans”, may return zero hits on DummyJSON’s sample data—try **phone**, **shirt**, **dress**).
+  - **Errors** (while online): message + **Retry** for the last query.
+  - **App-wide offline**: when there is no validated default network, **`AppScaffold`** shows a **full-screen** “No internet connection” state (no chrome, no navigation) with **Retry**; restores the previous back stack when connectivity returns.
 
 - **User Story 4 (Priority 2) – Product Details Page (PDP)**
   - Navigates from PLP → PDP.
@@ -75,7 +89,7 @@ Completed: **User Stories 1, 2, 4, and 5**. **User Story 3** (enhanced search) i
 - App chrome is hosted in a dedicated **AppShell** (`AppScaffold`), not in feature screens.
 - Top app bar (title + cart icon) and bottom navigation (Home/Search/Saved/Bag/Account) are shown for top-level destinations.
 - Chrome is **hidden on PDP** (`product/{id}`) to keep the product details experience full-screen.
-- Search/Saved/Bag/Account are currently simple **placeholder screens**.
+- **Search** is a real **product search** screen; Saved/Bag/Account remain **placeholder** tabs.
 
 ### Bug fixes (from the challenge PDF)
 - **Bug 1 (Priority 1) – Crash on app load**
@@ -92,12 +106,19 @@ Completed: **User Stories 1, 2, 4, and 5**. **User Story 3** (enhanced search) i
   - Removed artificial delay from the API client and added loading UI states.
 
 ## Tests
-- Added **unit tests** for ViewModel state behavior using `kotlinx-coroutines-test`.
+- **Unit (JVM)**: ViewModels (products, product details, **search**, shell where applicable), use cases, repository implementation (including **`/products/search`** MockEngine cases); **`FakeNetworkMonitor`** for connectivity-related logic without Robolectric.
+- **androidTest**: `TestRunner` installs `TestTechTestApp` with a fake `ProductsRepository`, **`NetworkMonitor` always online** by default, and regression checks (e.g. semantics / contrast on `app_root`).
 
-Run tests:
+Run JVM tests:
 
 ```bash
 ./gradlew testDebugUnitTest
+```
+
+Instrumentation (device or emulator):
+
+```bash
+./gradlew :app:connectedDebugAndroidTest
 ```
 
 ## How to run
@@ -112,14 +133,15 @@ Open the project in Android Studio and run the `app` configuration, or from CLI:
   - Keep bottom-nav selection in sync with the current route (e.g., deep links or back navigation across tabs).
   - Add separate navigation graphs per tab if/when those features become real.
 
-- **User Story 3 (Priority 4) – Enhanced Search**
-  - Add a search UI, state, and use DummyJSON search endpoint (`/products/search?q=...`).
-
 - **UI polish**
-  - Replace placeholder tab content screens (Search/Saved/Bag/Account) with real features.
+  - Replace placeholder tab content screens (Saved/Bag/Account) with real features.
   - Consider Window Size Classes for explicit compact/medium/expanded layouts.
 
 ## Notes / assumptions
 - Currency formatting is currently **Locale.UK** to ensure a currency symbol is shown.
 - “SKU” is represented by the DummyJSON `id` field (no separate SKU field in the API payload used).
+
+## AI collaboration prompts
+
+Reusable lead-engineer style prompt blocks (architecture, shell, motion, search, offline, tests, etc.) live in **[`docs/ai-collaboration-prompts.md`](docs/ai-collaboration-prompts.md)** for adapting to other projects.
 

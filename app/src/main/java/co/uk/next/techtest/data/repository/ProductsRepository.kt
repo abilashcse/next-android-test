@@ -20,14 +20,31 @@ class ProductsRepositoryImpl(
 
     override suspend fun getProductsPage(limit: Int, skip: Int): Result<ProductsPage> {
         return runCatching {
-            // Select only what the PLP needs to keep payload light.
             val response =
                 apiClient.getProductsPage(
                     limit = limit,
                     skip = skip,
-                    select = "id,title,price,brand,thumbnail,discountPercentage,rating,stock"
+                    select = PLP_FIELD_SELECT
                 )
 
+            ProductsPage(
+                items = response.products.map { it.toSummary() },
+                total = response.total ?: 0,
+                skip = response.skip ?: skip,
+                limit = response.limit ?: limit
+            )
+        }
+    }
+
+    override suspend fun searchProducts(query: String, limit: Int, skip: Int): Result<ProductsPage> {
+        return runCatching {
+            val response =
+                apiClient.searchProductsPage(
+                    query = query,
+                    limit = limit,
+                    skip = skip,
+                    select = PLP_FIELD_SELECT
+                )
             ProductsPage(
                 items = response.products.map { it.toSummary() },
                 total = response.total ?: 0,
@@ -43,6 +60,9 @@ class ProductsRepositoryImpl(
         }
     }
 }
+
+private const val PLP_FIELD_SELECT =
+    "id,title,price,brand,thumbnail,discountPercentage,rating,stock"
 
 private fun ProductDto.toSummary(): ProductSummary =
     ProductSummary(
