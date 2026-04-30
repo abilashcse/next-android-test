@@ -13,6 +13,7 @@ This repository is a Jetpack Compose Android app that consumes DummyJSON’s Pro
 
 ## Architecture overview (high level)
 - **`core/`**: DI modules, navigation, theme
+- **`core/ui/shell/`**: app chrome (top app bar + bottom navigation) + shell state
 - **`data/`**: DTOs + API client + repository implementation
 - **`domain/`**: models + repository interface + use cases
 - **`presentation/`**: Compose screens + ViewModels + `UiState`
@@ -37,7 +38,10 @@ This repository is a Jetpack Compose Android app that consumes DummyJSON’s Pro
   - PDP shows **reviews** (name → stars → quoted comment → date formatted as `DD - Month - YYYY`), and tapping the rating near the price scrolls to the reviews section.
 
 ### App chrome (home)
-- PLP screen includes a top app bar (title + cart icon) and a bottom navigation bar (Home/Search/Saved/Bag/Account). Non-Home tabs are placeholders for now.
+- App chrome is hosted in a dedicated **AppShell** (`AppScaffold`), not in feature screens.
+- Top app bar (title + cart icon) and bottom navigation (Home/Search/Saved/Bag/Account) are shown for top-level destinations.
+- Chrome is **hidden on PDP** (`product/{id}`) to keep the product details experience full-screen.
+- Search/Saved/Bag/Account are currently simple **placeholder screens**.
 
 ### Bug fixes (from the challenge PDF)
 - **Bug 1 (Priority 1) – Crash on app load**
@@ -70,8 +74,9 @@ Open the project in Android Studio and run the `app` configuration, or from CLI:
 ```
 
 ## Pending user stories / enhancements
-- **App shell refactor (scalability)**
-  - Move top app bar + bottom navigation out of `ProductsScreen` into a dedicated app-shell layer, so feature screens only contain feature logic/UI.
+- **App shell polish**
+  - Keep bottom-nav selection in sync with the current route (e.g., deep links or back navigation across tabs).
+  - Add separate navigation graphs per tab if/when those features become real.
 
 - **User Story 3 (Priority 4) – Enhanced Search**
   - Add a search UI, state, and use DummyJSON search endpoint (`/products/search?q=...`).

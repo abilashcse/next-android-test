@@ -3,6 +3,7 @@ package co.uk.next.techtest.core.di
 import android.util.Log
 import co.uk.next.techtest.data.remote.DummyJsonApiClient
 import co.uk.next.techtest.data.repository.ProductsRepositoryImpl
+import co.uk.next.techtest.core.ui.shell.AppShellViewModel
 import co.uk.next.techtest.domain.repository.ProductsRepository
 import co.uk.next.techtest.domain.usecase.GetProductsPageUseCase
 import co.uk.next.techtest.domain.usecase.GetProductDetailsUseCase
@@ -42,6 +43,7 @@ val appModule = module {
     factory { GetProductsPageUseCase(repository = get()) }
     factory { GetProductDetailsUseCase(repository = get()) }
 
+    viewModel { AppShellViewModel() }
     viewModel { ProductsViewModel(getProductsPage = get()) }
     viewModel { ProductDetailsViewModel(getProductDetails = get()) }
 }
