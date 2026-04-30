@@ -1,6 +1,9 @@
 package co.uk.next.techtest.presentation.productdetails
 
+import androidx.activity.BackEventCompat
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
@@ -24,6 +27,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -47,6 +54,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,6 +69,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -72,6 +82,9 @@ import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import java.time.OffsetDateTime
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -119,6 +132,17 @@ fun ProductDetailsScreen(
             val isFavourite = remember { mutableStateOf(false) }
             val bringIntoViewRequester = remember { BringIntoViewRequester() }
             val scope = rememberCoroutineScope()
+            val latestOnBack by rememberUpdatedState(onBack)
+
+            val configuration = LocalConfiguration.current
+            val density = LocalDensity.current
+            val screenHeightPx = remember(configuration.screenHeightDp, density) {
+                with(density) { configuration.screenHeightDp.dp.toPx() }
+            }
+
+            // 0f = fully offscreen (below). 1f = fully shown.
+            val progress = remember(productId) { Animatable(0f) }
+            val isDismissing = remember { mutableStateOf(false) }
 
             val discount = product.discountPercentage ?: 0.0
             val hasSale = discount > 0.0
@@ -130,62 +154,157 @@ fun ProductDetailsScreen(
                 currencyFormatter.format(original)
             }
 
-            Scaffold(
-                modifier = modifier.fillMaxSize(),
-                topBar = {
-                    CenterAlignedTopAppBar(
-                        title = { Text(text = product.title, maxLines = 1) },
-                        navigationIcon = {
-                            IconButton(onClick = onBack) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Back"
-                                )
-                            }
-                        },
-                        actions = {
-                            IconButton(onClick = { /* share placeholder */ }) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Share,
-                                    contentDescription = "Share"
-                                )
-                            }
-                            IconButton(onClick = { isFavourite.value = !isFavourite.value }) {
-                                Icon(
-                                    imageVector = Icons.Outlined.FavoriteBorder,
-                                    contentDescription = "Favourite"
-                                )
-                            }
-                        }
+            val translationY = (1f - progress.value) * screenHeightPx
+            val scrimAlpha = progress.value.coerceIn(0f, 1f)
+
+            suspend fun dismissToPlp() {
+                if (isDismissing.value) return
+                isDismissing.value = true
+                try {
+                    progress.animateTo(
+                        targetValue = 0f,
+                        animationSpec = tween(durationMillis = 240)
                     )
-                },
-                bottomBar = {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                WindowInsets
-                                    .navigationBars
-                                    .asPaddingValues()
-                            )
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                    ) {
-                        Button(
-                            onClick = { /* CTA placeholder */ },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(text = "Add to Cart")
-                        }
-                    }
+                } finally {
+                    latestOnBack()
                 }
-            ) { innerPadding ->
-                Column(
+            }
+
+            // Entry transition: slide up + fade in background.
+            LaunchedEffect(productId) {
+                isDismissing.value = false
+                progress.snapTo(0f)
+                progress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 280)
+                )
+            }
+
+            // Predictive back: scrubbable slide-down + reveal PLP.
+            PredictiveBackHandler(enabled = true) { backProgress: Flow<BackEventCompat> ->
+                try {
+                    backProgress.collect { event ->
+                        progress.snapTo((1f - event.progress).coerceIn(0f, 1f))
+                    }
+                    // Gesture committed.
+                    dismissToPlp()
+                } catch (e: CancellationException) {
+                    // Gesture cancelled.
+                    progress.animateTo(
+                        targetValue = 1f,
+                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                    )
+                    throw e
+                }
+            }
+
+            val scrollState = rememberScrollState()
+            val scrollAtTop by remember {
+                derivedStateOf { scrollState.value == 0 }
+            }
+
+            Box(
+                modifier = modifier
+                    .fillMaxSize()
+                    // Scrim drives the perceived PLP fade-away/fade-in underneath the PDP.
+                    .background(Color.Black.copy(alpha = 0.22f * scrimAlpha))
+            ) {
+                Scaffold(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(innerPadding)
-                        .padding(16.dp)
-                ) {
+                        .graphicsLayer {
+                            this.translationY = translationY
+                        }
+                        .pointerInput(scrollAtTop, screenHeightPx) {
+                            // Swipe-down-to-dismiss (scrubbable), only when content is at top.
+                            if (!scrollAtTop) return@pointerInput
+
+                            detectVerticalDragGestures(
+                                onVerticalDrag = { change, dragAmount ->
+                                    // dragAmount > 0 when dragging down.
+                                    change.consume()
+                                    val delta = dragAmount / screenHeightPx
+                                    val newProgress = (progress.value - delta).coerceIn(0f, 1f)
+                                    scope.launch {
+                                        progress.snapTo(newProgress)
+                                    }
+                                },
+                                onDragCancel = {
+                                    scope.launch {
+                                        progress.animateTo(
+                                            targetValue = 1f,
+                                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                                        )
+                                    }
+                                },
+                                onDragEnd = {
+                                    scope.launch {
+                                        if (progress.value < 0.6f) {
+                                            dismissToPlp()
+                                        } else {
+                                            progress.animateTo(
+                                                targetValue = 1f,
+                                                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                                            )
+                                        }
+                                    }
+                                }
+                            )
+                        },
+                    topBar = {
+                        CenterAlignedTopAppBar(
+                            title = { Text(text = product.title, maxLines = 1) },
+                            navigationIcon = {
+                                IconButton(onClick = { scope.launch { dismissToPlp() } }) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Back"
+                                    )
+                                }
+                            },
+                            actions = {
+                                IconButton(onClick = { /* share placeholder */ }) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Share,
+                                        contentDescription = "Share"
+                                    )
+                                }
+                                IconButton(onClick = { isFavourite.value = !isFavourite.value }) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.FavoriteBorder,
+                                        contentDescription = "Favourite"
+                                    )
+                                }
+                            }
+                        )
+                    },
+                    bottomBar = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    WindowInsets
+                                        .navigationBars
+                                        .asPaddingValues()
+                                )
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                        ) {
+                            Button(
+                                onClick = { /* CTA placeholder */ },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(text = "Add to Cart")
+                            }
+                        }
+                    }
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState)
+                            .padding(innerPadding)
+                            .padding(16.dp)
+                    ) {
                     Text(
                         text = "SKU: ${product.id}",
                         style = MaterialTheme.typography.bodyMedium,
@@ -344,6 +463,8 @@ fun ProductDetailsScreen(
             }
         }
     }
+}
+
 }
 
 @Composable
@@ -549,6 +670,7 @@ private fun ReviewItem(
     val starColor = Color(0xFFFFC107)
     val clamped = (rating ?: 0).coerceIn(0, 5)
     val formattedDate = date?.let(::formatReviewDate)
+    val safeComment = comment?.takeIf { it.isNotBlank() } ?: "No review text"
 
     Column(modifier = Modifier.padding(vertical = 10.dp)) {
         // Name
@@ -576,7 +698,7 @@ private fun ReviewItem(
 
         // Review in double quotes
         Text(
-            text = "“${comment?.takeIf { it.isNotBlank() } ?: "No review text"}”",
+            text = "“$safeComment”",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 8.dp)
         )
@@ -584,7 +706,7 @@ private fun ReviewItem(
         // Date: DD - Month - YYYY
         if (!formattedDate.isNullOrBlank()) {
             Text(
-                text = formattedDate,
+                text = formattedDate.orEmpty(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 6.dp)

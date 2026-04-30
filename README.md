@@ -18,9 +18,36 @@ This repository is a Jetpack Compose Android app that consumes DummyJSON’s Pro
 - **`domain/`**: models + repository interface + use cases
 - **`presentation/`**: Compose screens + ViewModels + `UiState`
 
+## Architecture diagram
+
+```mermaid
+flowchart TD
+  MainActivity-->AppScaffold
+  AppScaffold-->TopBarAndBottomNav
+  AppScaffold-->TechTestNavHost
+
+  TechTestNavHost-->ProductsScreen
+  TechTestNavHost-->ProductDetailsScreen
+  TechTestNavHost-->PlaceholderTabs
+
+  ProductsScreen-->ProductsViewModel
+  ProductDetailsScreen-->ProductDetailsViewModel
+
+  ProductsViewModel-->GetProductsPageUseCase
+  ProductDetailsViewModel-->GetProductDetailsUseCase
+
+  GetProductsPageUseCase-->ProductsRepository
+  GetProductDetailsUseCase-->ProductsRepository
+
+  ProductsRepository-->DummyJsonApiClient
+  DummyJsonApiClient-->DummyJsonProductsApi["DummyJSONProductsAPI"]
+```
+
 ## Implemented features
 
 ### User Stories
+Completed: **User Stories 1, 2, 4, and 5**. **User Story 3** (enhanced search) is still outstanding — see **Pending user stories / enhancements** below.
+
 - **User Story 1 (Priority 1) – List Tile UI**
   - Product tile shows **thumbnail**, **title (max 2 lines)**, **brand**, and **price**.
   - PLP tile supports **SALE** badge (red background, white text), **favourite** toggle, and **golden star rating**.
@@ -36,6 +63,13 @@ This repository is a Jetpack Compose Android app that consumes DummyJSON’s Pro
   - PDP displays: title, SKU (`id`), **image carousel** with dot indicator, price (sale/original), rating, brand/category, description, warranty/return/shipping info, and a sticky **Add to Cart** CTA.
   - PDP supports **pinch-to-zoom + pan** on images while preserving **pager swiping** when not zoomed.
   - PDP shows **reviews** (name → stars → quoted comment → date formatted as `DD - Month - YYYY`), and tapping the rating near the price scrolls to the reviews section.
+
+- **User Story 5 (Priority 3) – PLP ↔ PDP transitions + predictive back — completed**
+  - PDP is presented as a **full-screen dialog overlay** so the PLP remains visible underneath.
+  - **Entry**: PDP content **slides up from bottom** while the underlying PLP performs a gentle **fade-away** effect (via a transition-driven scrim).
+  - **Exit**: exact reverse — PDP **slides down off-screen** while PLP **fades back in**.
+  - **Predictive back**: exit transition is **scrubbable** using `PredictiveBackHandler` (PDP position + scrim respond to gesture progress).
+  - **Swipe-down-to-dismiss**: scrubbable dismissal gesture on PDP when content is scrolled to the top (avoids conflicts with normal scrolling).
 
 ### App chrome (home)
 - App chrome is hosted in a dedicated **AppShell** (`AppScaffold`), not in feature screens.
@@ -80,9 +114,6 @@ Open the project in Android Studio and run the `app` configuration, or from CLI:
 
 - **User Story 3 (Priority 4) – Enhanced Search**
   - Add a search UI, state, and use DummyJSON search endpoint (`/products/search?q=...`).
-
-- **User Story 5 (Priority 3) – PLP ↔ PDP transitions + predictive back**
-  - Implement slide/fade transitions and ensure predictive back gesture integration.
 
 - **UI polish**
   - Replace placeholder tab content screens (Search/Saved/Bag/Account) with real features.

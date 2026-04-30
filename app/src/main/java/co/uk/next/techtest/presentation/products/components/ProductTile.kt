@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
@@ -71,6 +72,7 @@ fun ProductTile(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .testTag("product_tile_${product.id}")
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors()
     ) {

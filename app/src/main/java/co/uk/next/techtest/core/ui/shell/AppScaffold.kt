@@ -1,7 +1,9 @@
 package co.uk.next.techtest.core.ui.shell
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
@@ -18,11 +20,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import co.uk.next.techtest.R
 import co.uk.next.techtest.core.navigation.Routes
 import co.uk.next.techtest.core.navigation.TechTestNavHost
+import co.uk.next.techtest.core.ui.testing.surfaceArgb
+import co.uk.next.techtest.core.ui.testing.onSurfaceArgb
+import androidx.compose.material3.MaterialTheme
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,14 +49,32 @@ fun AppScaffold(
     val currentRoute = backStackEntry?.destination?.route
 
     val shouldShowChrome = currentRoute != Routes.ProductDetails
+    val onSurfaceArgbValue = MaterialTheme.colorScheme.onSurface.toArgb()
+    val surfaceArgbValue = MaterialTheme.colorScheme.surface.toArgb()
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .testTag("app_root")
+            .semantics {
+                onSurfaceArgb = onSurfaceArgbValue
+                surfaceArgb = surfaceArgbValue
+            },
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             if (shouldShowChrome) {
                 CenterAlignedTopAppBar(
-                    title = { Text(text = "Next Test App") },
+                    modifier = Modifier.testTag("top_app_bar"),
+                    title = {
+                        Image(
+                            painter = painterResource(id = R.drawable.next_tech_test_wordmark),
+                            contentDescription = "Next Tech Test",
+                            modifier = Modifier
+                                .height(30.dp)
+                                .testTag("top_app_bar_logo"),
+                            contentScale = ContentScale.Fit
+                        )
+                    },
                     actions = {
                         IconButton(onClick = { /* cart placeholder */ }) {
                             Icon(

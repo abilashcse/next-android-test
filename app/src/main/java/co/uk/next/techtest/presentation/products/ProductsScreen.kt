@@ -23,6 +23,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -46,7 +47,7 @@ fun ProductsScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(modifier = Modifier.testTag("plp_loading"))
             }
         }
 
@@ -96,7 +97,7 @@ fun ProductsScreen(
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(columns),
-                modifier = modifier,
+                modifier = modifier.testTag("plp_grid"),
                 state = gridState,
                 contentPadding = PaddingValues(gridPadding),
                 horizontalArrangement = Arrangement.spacedBy(gridSpacing),
