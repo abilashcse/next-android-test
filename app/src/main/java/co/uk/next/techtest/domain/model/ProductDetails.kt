@@ -45,3 +45,14 @@ data class Dimensions(
     val depth: Double?
 )
 
+fun ProductDetails.toProductSummary(): ProductSummary =
+    ProductSummary(
+        id = id,
+        title = title,
+        brand = brand,
+        price = price,
+        thumbnailUrl = thumbnailUrl?.takeIf { it.isNotBlank() } ?: imageUrls.firstOrNull { it.isNotBlank() },
+        discountPercentage = discountPercentage,
+        rating = rating,
+        stock = stock
+    )

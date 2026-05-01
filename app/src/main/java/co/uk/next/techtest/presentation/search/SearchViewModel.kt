@@ -3,6 +3,7 @@ package co.uk.next.techtest.presentation.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.uk.next.techtest.domain.model.ProductSummary
+import co.uk.next.techtest.domain.repository.SavedProductsRepository
 import co.uk.next.techtest.domain.usecase.SearchProductsUseCase
 import co.uk.next.techtest.presentation.products.prioritizeMajorSales
 import kotlinx.coroutines.Job
@@ -13,7 +14,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class SearchViewModel(
-    private val searchProducts: SearchProductsUseCase
+    private val searchProducts: SearchProductsUseCase,
+    private val savedProductsRepository: SavedProductsRepository
 ) : ViewModel() {
 
     private val _queryDraft = MutableStateFlow("")
@@ -25,13 +27,25 @@ class SearchViewModel(
     private val pageSize = 30
     private var total: Int? = null
     private var items: List<ProductSummary> = emptyList()
-    private var favouriteIds: Set<Int> = emptySet()
+    private var latestSavedIds: Set<Int> = emptySet()
     private var isRequestInFlight: Boolean = false
     private var activeQuery: String = ""
     private var requestGeneration: Int = 0
 
     private var debounceJob: Job? = null
     private val debounceMs = 350L
+
+    init {
+        viewModelScope.launch {
+            savedProductsRepository.observeSavedProductIds().collect { ids ->
+                latestSavedIds = ids
+                val current = _uiState.value
+                if (current is SearchUiState.Success) {
+                    _uiState.value = current.copy(favouriteIds = ids)
+                }
+            }
+        }
+    }
 
     fun onQueryChange(raw: String) {
         _queryDraft.value = raw
@@ -105,12 +119,9 @@ class SearchViewModel(
     }
 
     fun toggleFavourite(productId: Int) {
-        favouriteIds =
-            if (favouriteIds.contains(productId)) favouriteIds - productId else favouriteIds + productId
-
-        val current = _uiState.value
-        if (current is SearchUiState.Success) {
-            _uiState.value = current.copy(favouriteIds = favouriteIds)
+        val summary = items.firstOrNull { it.id == productId } ?: return
+        viewModelScope.launch {
+            savedProductsRepository.toggleSaved(summary)
         }
     }
 
@@ -145,7 +156,7 @@ class SearchViewModel(
                     SearchUiState.Success(
                         activeQuery = query,
                         items = items,
-                        favouriteIds = favouriteIds,
+                        favouriteIds = latestSavedIds,
                         isAppending = false,
                         endReached = endReached
                     )

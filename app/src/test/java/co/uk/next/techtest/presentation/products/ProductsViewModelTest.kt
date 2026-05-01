@@ -2,6 +2,7 @@ package co.uk.next.techtest.presentation.products
 
 import co.uk.next.techtest.MainDispatcherRule
 import co.uk.next.techtest.domain.model.ProductsPage
+import co.uk.next.techtest.testsupport.FakeSavedProductsRepository
 import co.uk.next.techtest.domain.model.ProductSummary
 import co.uk.next.techtest.domain.usecase.GetProductsPageUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -52,7 +53,11 @@ class ProductsViewModelTest {
             }
         )
 
-        val vm = ProductsViewModel(getProductsPage = useCase)
+        val vm =
+            ProductsViewModel(
+                getProductsPage = useCase,
+                savedProductsRepository = FakeSavedProductsRepository()
+            )
 
         val state = vm.uiState.value
         val success = state as ProductsListUiState.Success
@@ -76,7 +81,11 @@ class ProductsViewModelTest {
             }
         )
 
-        val vm = ProductsViewModel(getProductsPage = useCase)
+        val vm =
+            ProductsViewModel(
+                getProductsPage = useCase,
+                savedProductsRepository = FakeSavedProductsRepository()
+            )
 
         val state = vm.uiState.value
         val err = state as ProductsListUiState.Error
@@ -119,7 +128,11 @@ class ProductsViewModelTest {
             }
         )
 
-        val vm = ProductsViewModel(getProductsPage = useCase)
+        val vm =
+            ProductsViewModel(
+                getProductsPage = useCase,
+                savedProductsRepository = FakeSavedProductsRepository()
+            )
         val first = vm.uiState.value as ProductsListUiState.Success
         assertEquals(1, first.items.size)
 
@@ -162,7 +175,11 @@ class ProductsViewModelTest {
             }
         )
 
-        val vm = ProductsViewModel(getProductsPage = useCase)
+        val vm =
+            ProductsViewModel(
+                getProductsPage = useCase,
+                savedProductsRepository = FakeSavedProductsRepository()
+            )
         val before = vm.uiState.value as ProductsListUiState.Success
         assertEquals(emptySet<Int>(), before.favouriteIds)
 
@@ -211,7 +228,11 @@ class ProductsViewModelTest {
             }
         )
 
-        val vm = ProductsViewModel(getProductsPage = useCase)
+        val vm =
+            ProductsViewModel(
+                getProductsPage = useCase,
+                savedProductsRepository = FakeSavedProductsRepository()
+            )
         assertEquals(1, calls)
 
         vm.loadNextPage()
@@ -259,7 +280,11 @@ class ProductsViewModelTest {
             }
         )
 
-        val vm = ProductsViewModel(getProductsPage = useCase)
+        val vm =
+            ProductsViewModel(
+                getProductsPage = useCase,
+                savedProductsRepository = FakeSavedProductsRepository()
+            )
         val first = vm.uiState.value as ProductsListUiState.Success
         assertEquals(listOf("First"), first.items.map { it.title })
 

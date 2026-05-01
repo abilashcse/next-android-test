@@ -2,6 +2,7 @@ package co.uk.next.techtest.presentation.search
 
 import co.uk.next.techtest.MainDispatcherRule
 import co.uk.next.techtest.domain.model.ProductsPage
+import co.uk.next.techtest.testsupport.FakeSavedProductsRepository
 import co.uk.next.techtest.domain.model.ProductSummary
 import co.uk.next.techtest.domain.usecase.SearchProductsUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -37,7 +38,11 @@ class SearchViewModelTest {
                         override suspend fun getProductDetails(id: Int) = error("not used")
                     }
             )
-        val vm = SearchViewModel(searchProducts = useCase)
+        val vm =
+            SearchViewModel(
+                searchProducts = useCase,
+                savedProductsRepository = FakeSavedProductsRepository()
+            )
         vm.onQueryChange("   ")
         advanceUntilIdle()
         assertEquals(SearchUiState.Idle, vm.uiState.value)
@@ -81,7 +86,11 @@ class SearchViewModelTest {
                         override suspend fun getProductDetails(id: Int) = error("not used")
                     }
             )
-        val vm = SearchViewModel(searchProducts = useCase)
+        val vm =
+            SearchViewModel(
+                searchProducts = useCase,
+                savedProductsRepository = FakeSavedProductsRepository()
+            )
         vm.onQueryChange("phone")
         advanceTimeBy(400)
         advanceUntilIdle()
@@ -112,7 +121,11 @@ class SearchViewModelTest {
                         override suspend fun getProductDetails(id: Int) = error("not used")
                     }
             )
-        val vm = SearchViewModel(searchProducts = useCase)
+        val vm =
+            SearchViewModel(
+                searchProducts = useCase,
+                savedProductsRepository = FakeSavedProductsRepository()
+            )
         vm.onQueryChange("jeans")
         advanceTimeBy(400)
         advanceUntilIdle()
@@ -167,7 +180,11 @@ class SearchViewModelTest {
                         override suspend fun getProductDetails(id: Int) = error("not used")
                     }
             )
-        val vm = SearchViewModel(searchProducts = useCase)
+        val vm =
+            SearchViewModel(
+                searchProducts = useCase,
+                savedProductsRepository = FakeSavedProductsRepository()
+            )
         vm.onQueryChange("x")
         advanceTimeBy(400)
         advanceUntilIdle()
@@ -223,7 +240,11 @@ class SearchViewModelTest {
                         override suspend fun getProductDetails(id: Int) = error("not used")
                     }
             )
-        val vm = SearchViewModel(searchProducts = useCase)
+        val vm =
+            SearchViewModel(
+                searchProducts = useCase,
+                savedProductsRepository = FakeSavedProductsRepository()
+            )
         vm.onQueryChange("q")
         advanceTimeBy(400)
         advanceUntilIdle()

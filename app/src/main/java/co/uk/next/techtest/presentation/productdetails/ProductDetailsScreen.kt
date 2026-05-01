@@ -45,6 +45,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.StarHalf
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.runtime.Composable
@@ -133,7 +134,7 @@ fun ProductDetailsScreen(
         is ProductDetailsUiState.Success -> {
             val product = state.product
             val currencyFormatter = NumberFormat.getCurrencyInstance(Locale.UK)
-            val isFavourite = remember { mutableStateOf(false) }
+            val isSaved by viewModel.isSaved.collectAsState()
             val bringIntoViewRequester = remember { BringIntoViewRequester() }
             val scope = rememberCoroutineScope()
             val latestOnBack by rememberUpdatedState(onBack)
@@ -275,10 +276,12 @@ fun ProductDetailsScreen(
                                         contentDescription = "Share"
                                     )
                                 }
-                                IconButton(onClick = { isFavourite.value = !isFavourite.value }) {
+                                IconButton(onClick = { viewModel.toggleSaved() }) {
                                     Icon(
-                                        imageVector = Icons.Outlined.FavoriteBorder,
-                                        contentDescription = "Favourite"
+                                        imageVector =
+                                            if (isSaved) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                        contentDescription =
+                                            if (isSaved) "Remove from saved" else "Save product"
                                     )
                                 }
                             }

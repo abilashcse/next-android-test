@@ -3,6 +3,7 @@ package co.uk.next.techtest.presentation.products
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.uk.next.techtest.domain.model.ProductSummary
+import co.uk.next.techtest.domain.repository.SavedProductsRepository
 import co.uk.next.techtest.domain.usecase.GetProductsPageUseCase
 import co.uk.next.techtest.presentation.products.prioritizeMajorSales
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,7 +12,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class ProductsViewModel(
-    private val getProductsPage: GetProductsPageUseCase
+    private val getProductsPage: GetProductsPageUseCase,
+    private val savedProductsRepository: SavedProductsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProductsListUiState>(ProductsListUiState.Loading)
@@ -20,10 +22,19 @@ class ProductsViewModel(
     private val pageSize = 30
     private var total: Int? = null
     private var items: List<ProductSummary> = emptyList()
-    private var favouriteIds: Set<Int> = emptySet()
+    private var latestSavedIds: Set<Int> = emptySet()
     private var isRequestInFlight: Boolean = false
 
     init {
+        viewModelScope.launch {
+            savedProductsRepository.observeSavedProductIds().collect { ids ->
+                latestSavedIds = ids
+                val current = _uiState.value
+                if (current is ProductsListUiState.Success) {
+                    _uiState.value = current.copy(favouriteIds = ids)
+                }
+            }
+        }
         refresh()
     }
 
@@ -61,7 +72,7 @@ class ProductsViewModel(
                 _uiState.value =
                     ProductsListUiState.Success(
                         items = items,
-                        favouriteIds = favouriteIds,
+                        favouriteIds = latestSavedIds,
                         isAppending = false,
                         endReached = endReached
                     )
@@ -77,13 +88,9 @@ class ProductsViewModel(
     }
 
     fun toggleFavourite(productId: Int) {
-        favouriteIds =
-            if (favouriteIds.contains(productId)) favouriteIds - productId else favouriteIds + productId
-
-        val current = _uiState.value
-        if (current is ProductsListUiState.Success) {
-            _uiState.value = current.copy(favouriteIds = favouriteIds)
+        val summary = items.firstOrNull { it.id == productId } ?: return
+        viewModelScope.launch {
+            savedProductsRepository.toggleSaved(summary)
         }
     }
 }
-

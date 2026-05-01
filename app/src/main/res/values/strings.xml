@@ -8,4 +8,6 @@
     <string name="search_no_results">No products found for \"%1$s\".</string>
     <string name="search_error_retry">Retry</string>
     <string name="search_clear_content_description">Clear search</string>
+    <string name="saved_empty_title">No saved items</string>
+    <string name="saved_empty_message">Products you save with the heart icon will appear here.</string>
 </resources>

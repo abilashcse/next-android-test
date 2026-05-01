@@ -7,6 +7,7 @@ This repository is a Jetpack Compose Android app that consumes DummyJSON’s Pro
 - **Architecture**: Clean-ish **MVVM + UDF** (single `UiState` per screen)
 - **DI**: **Koin**
 - **Networking**: **Ktor** + `kotlinx.serialization`
+- **Local storage**: **Room** (saved product summaries + timestamps), **KSP** for the Room compiler
 - **Image loading**: **Coil (compose)**
 - **Navigation**: `navigation-compose`
 - **Connectivity**: `ConnectivityManager` default network callback (`NetworkMonitor`) for app-wide offline UI
@@ -15,7 +16,7 @@ This repository is a Jetpack Compose Android app that consumes DummyJSON’s Pro
 ## Architecture overview (high level)
 - **`core/`**: DI modules, navigation, theme, **network connectivity** (`NetworkMonitor`)
 - **`core/ui/shell/`**: app chrome (top app bar + bottom navigation) + shell state
-- **`data/`**: DTOs + API client + repository implementation
+- **`data/`**: DTOs + API client + repository implementations (**products** remote + **saved** Room)
 - **`domain/`**: models + repository interface + use cases
 - **`presentation/`**: Compose screens + ViewModels + `UiState`
 
@@ -30,16 +31,22 @@ flowchart TD
 
   TechTestNavHost-->ProductsScreen
   TechTestNavHost-->SearchScreen
+  TechTestNavHost-->SavedScreen
   TechTestNavHost-->ProductDetailsScreen
   TechTestNavHost-->PlaceholderTabs
 
   ProductsScreen-->ProductsViewModel
   SearchScreen-->SearchViewModel
+  SavedScreen-->SavedViewModel
   ProductDetailsScreen-->ProductDetailsViewModel
 
   ProductsViewModel-->GetProductsPageUseCase
   SearchViewModel-->SearchProductsUseCase
   ProductDetailsViewModel-->GetProductDetailsUseCase
+  ProductsViewModel-->SavedProductsRepository
+  SearchViewModel-->SavedProductsRepository
+  SavedViewModel-->SavedProductsRepository
+  ProductDetailsViewModel-->SavedProductsRepository
 
   GetProductsPageUseCase-->ProductsRepository
   SearchProductsUseCase-->ProductsRepository
@@ -47,6 +54,7 @@ flowchart TD
 
   ProductsRepository-->DummyJsonApiClient
   DummyJsonApiClient-->DummyJsonProductsApi["DummyJSONProductsAPI"]
+  SavedProductsRepository-->RoomDB["Room (saved_products)"]
 ```
 
 ## Implemented features
@@ -58,7 +66,8 @@ Completed: **User Stories 1, 2, 3, 4, and 5**.
   - Product tile shows **thumbnail**, **title (max 2 lines)**, **brand**, and **price**.
   - Discount badge: red **SALE** only when **discount ≥ 50%**; otherwise (0–50%) an **orange** chip shows **percentage OFF** (e.g. `12% OFF`); no chip at 0%. Strikethrough original price still applies whenever discount is greater than 0.
   - PLP and **Search** lists **prioritise** major-sale items (≥ 50%) at the top among **loaded** pages (stable partition after each API merge; pagination `skip` unchanged).
-  - **favourite** toggle and **golden star rating**.
+  - **Saved / heart** on each tile: persists **locally** (Room); the same saved state is shared with **Search**, **PDP**, and the **Saved** tab (toggle anywhere updates the others when you return or recompose).
+  - **Golden star rating** on the tile.
   - Image fallback uses a simple placeholder when thumbnail is missing.
 
 - **User Story 2 (Priority 3) – Product List Grid Layout**
@@ -77,6 +86,7 @@ Completed: **User Stories 1, 2, 3, 4, and 5**.
 - **User Story 4 (Priority 2) – Product Details Page (PDP)**
   - Navigates from PLP → PDP.
   - PDP displays: title, SKU (`id`), **image carousel** with dot indicator, price (sale/original), rating, brand/category, description, warranty/return/shipping info, and a sticky **Add to Cart** CTA.
+  - **Save (heart)** in the top bar uses the same **local saved list** as the PLP/Search tiles (filled vs outline icon).
   - PDP supports **pinch-to-zoom + pan** on images while preserving **pager swiping** when not zoomed.
   - PDP shows **reviews** (name → stars → quoted comment → date formatted as `DD - Month - YYYY`), and tapping the rating near the price scrolls to the reviews section.
 
@@ -91,7 +101,7 @@ Completed: **User Stories 1, 2, 3, 4, and 5**.
 - App chrome is hosted in a dedicated **AppShell** (`AppScaffold`), not in feature screens.
 - Top app bar (title + cart icon) and bottom navigation (Home/Search/Saved/Bag/Account) are shown for top-level destinations.
 - Chrome is **hidden on PDP** (`product/{id}`) to keep the product details experience full-screen.
-- **Search** is a real **product search** screen; Saved/Bag/Account remain **placeholder** tabs.
+- **Search** is a real **product search** screen. **Saved** shows **locally stored** favourites in the same grid/tile layout as the PLP; **empty state** when nothing is saved. **Bag** and **Account** remain **placeholder** tabs.
 
 ### Bug fixes (from the challenge PDF)
 - **Bug 1 (Priority 1) – Crash on app load**
@@ -108,8 +118,8 @@ Completed: **User Stories 1, 2, 3, 4, and 5**.
   - Removed artificial delay from the API client and added loading UI states.
 
 ## Tests
-- **Unit (JVM)**: ViewModels (products, product details, **search**, shell where applicable), use cases, repository implementation (including **`/products/search`** MockEngine cases); **`FakeNetworkMonitor`** for connectivity-related logic without Robolectric.
-- **androidTest**: `TestRunner` installs `TestTechTestApp` with a fake `ProductsRepository`, **`NetworkMonitor` always online** by default, and regression checks (e.g. semantics / contrast on `app_root`).
+- **Unit (JVM)**: ViewModels (products, product details, **search**, shell where applicable), use cases, repository implementation (including **`/products/search`** MockEngine cases); **`FakeNetworkMonitor`** for connectivity-related logic without Robolectric; **`FakeSavedProductsRepository`** for saved-state wiring in ViewModel tests.
+- **androidTest**: `TestRunner` installs `TestTechTestApp` with a fake `ProductsRepository`, **`FakeSavedProductsRepository`**, **`NetworkMonitor` always online** by default, and regression checks (e.g. semantics / contrast on `app_root`).
 
 Run JVM tests:
 
@@ -136,7 +146,7 @@ Open the project in Android Studio and run the `app` configuration, or from CLI:
   - Add separate navigation graphs per tab if/when those features become real.
 
 - **UI polish**
-  - Replace placeholder tab content screens (Saved/Bag/Account) with real features.
+  - Replace **Bag** and **Account** placeholder tab content with real features.
   - Consider Window Size Classes for explicit compact/medium/expanded layouts.
 
 ## Notes / assumptions
