@@ -2,6 +2,8 @@
 
 This repository is a Jetpack Compose Android app that consumes DummyJSON’s Products API and implements a subset of the challenge user stories and bug fixes.
 
+AI prompt templates used during development live in **[`docs/ai-collaboration-prompts.md`](docs/ai-collaboration-prompts.md)**.
+
 ## Tech stack
 - **UI**: Jetpack Compose (Material 3)
 - **Architecture**: Clean-ish **MVVM + UDF** (single `UiState` per screen)
