@@ -20,42 +20,47 @@ This repository is a Jetpack Compose Android app that consumes DummyJSON’s Pro
 - **`domain/`**: models + repository interface + use cases
 - **`presentation/`**: Compose screens + ViewModels + `UiState`
 
+**MVVM (presentation):** Composable **Views** observe **ViewModels**; each screen exposes a single **`UiState`** (`StateFlow`) and handles user actions as one-way events (unidirectional data flow).
+
+**Clean Architecture:** **Domain** defines **use cases** and **repository contracts** (plus entities); **Data** implements those contracts and talks to Ktor/Room. Presentation depends on Domain only, not on Ktor or Room types.
+
 ## Architecture diagram
 
+The diagram below shows **MVVM** inside the presentation layer and how it sits on top of **Domain** and **Data** (Clean Architecture). Solid arrows are compile-time dependencies; dashed arrows mean *implements* (repository implementations satisfying domain interfaces).
+
 ```mermaid
-flowchart TD
-  MainActivity-->AppScaffold
-  AppScaffold-->NetworkMonitor
-  AppScaffold-->TopBarAndBottomNav
-  AppScaffold-->TechTestNavHost
+flowchart TB
+  subgraph MVVM["Presentation — MVVM"]
+    direction TB
+    subgraph View["View"]
+      Screens["`@Composable` screens + `NavHost`<br/>`AppScaffold`, feature UIs"]
+    end
+    subgraph VM["ViewModel"]
+      VMs["`ViewModel` + `UiState`<br/>`StateFlow`, user-event handlers"]
+    end
+    Screens <-->|state / events| VMs
+  end
 
-  TechTestNavHost-->ProductsScreen
-  TechTestNavHost-->SearchScreen
-  TechTestNavHost-->SavedScreen
-  TechTestNavHost-->ProductDetailsScreen
-  TechTestNavHost-->PlaceholderTabs
+  subgraph Domain["Domain — Clean Architecture"]
+    direction TB
+    UC["Use cases<br/>`GetProductsPageUseCase`, `SearchProductsUseCase`,<br/>`GetProductDetailsUseCase`"]
+    Contracts["Repository abstractions + models<br/>`ProductsRepository`, `SavedProductsRepository`,<br/>`ProductSummary`, `ProductDetails`, …"]
+    UC --> Contracts
+  end
 
-  ProductsScreen-->ProductsViewModel
-  SearchScreen-->SearchViewModel
-  SavedScreen-->SavedViewModel
-  ProductDetailsScreen-->ProductDetailsViewModel
+  subgraph Data["Data layer"]
+    direction TB
+    Impl["Repository implementations<br/>`ProductsRepositoryImpl`, `SavedProductsRepositoryImpl`"]
+    Sources["Sources<br/>Ktor + DTOs • Room (`saved_products`)"]
+    Impl --> Sources
+  end
 
-  ProductsViewModel-->GetProductsPageUseCase
-  SearchViewModel-->SearchProductsUseCase
-  ProductDetailsViewModel-->GetProductDetailsUseCase
-  ProductsViewModel-->SavedProductsRepository
-  SearchViewModel-->SavedProductsRepository
-  SavedViewModel-->SavedProductsRepository
-  ProductDetailsViewModel-->SavedProductsRepository
-
-  GetProductsPageUseCase-->ProductsRepository
-  SearchProductsUseCase-->ProductsRepository
-  GetProductDetailsUseCase-->ProductsRepository
-
-  ProductsRepository-->DummyJsonApiClient
-  DummyJsonApiClient-->DummyJsonProductsApi["DummyJSONProductsAPI"]
-  SavedProductsRepository-->RoomDB["Room (saved_products)"]
+  VMs --> UC
+  VMs --> Contracts
+  Impl -.->|implements| Contracts
 ```
+
+**Runtime wiring (not separate layers):** `MainActivity` → `AppScaffold` (`NetworkMonitor`, chrome) → `TechTestNavHost` → screens above. Remote calls go **ProductsRepository** → **DummyJsonApiClient** → DummyJSON; saved products go **SavedProductsRepository** → Room.
 
 ## Implemented features
 
