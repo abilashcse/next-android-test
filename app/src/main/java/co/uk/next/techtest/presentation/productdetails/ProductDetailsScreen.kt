@@ -113,13 +113,21 @@ fun ProductDetailsScreen(
 
     when (val state = uiState) {
         is ProductDetailsUiState.Loading -> {
-            Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
+            Column(
+                modifier = modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 CircularProgressIndicator()
             }
         }
 
         is ProductDetailsUiState.Error -> {
-            Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
+            Column(
+                modifier = modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(
                     text = state.message,
                     color = MaterialTheme.colorScheme.onSurface
