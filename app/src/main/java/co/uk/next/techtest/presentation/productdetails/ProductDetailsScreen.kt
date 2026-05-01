@@ -77,6 +77,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.clickable
 import coil.compose.AsyncImage
+import co.uk.next.techtest.presentation.products.formatMinorDiscountPercent
+import co.uk.next.techtest.presentation.products.hasDiscountPricing
+import co.uk.next.techtest.presentation.products.isMajorSaleDiscount
+import co.uk.next.techtest.presentation.products.showsMinorDiscountBadge
 import org.koin.compose.viewmodel.koinViewModel
 import java.text.NumberFormat
 import java.util.Locale
@@ -145,11 +149,13 @@ fun ProductDetailsScreen(
             val isDismissing = remember { mutableStateOf(false) }
 
             val discount = product.discountPercentage ?: 0.0
-            val hasSale = discount > 0.0
+            val productHasDiscountPricing = hasDiscountPricing(product.discountPercentage)
+            val majorSalePdp = isMajorSaleDiscount(product.discountPercentage)
+            val minorSalePdp = showsMinorDiscountBadge(product.discountPercentage)
             val priceText = product.price?.let(currencyFormatter::format).orEmpty()
             val originalPriceText = remember(product.price, discount) {
                 val price = product.price ?: return@remember ""
-                if (!hasSale || discount >= 100.0) return@remember ""
+                if (!productHasDiscountPricing || discount >= 100.0) return@remember ""
                 val original = price / (1.0 - (discount / 100.0))
                 currencyFormatter.format(original)
             }
@@ -329,7 +335,7 @@ fun ProductDetailsScreen(
                             text = priceText.ifBlank { "N/A" },
                             style = MaterialTheme.typography.headlineSmall
                         )
-                        if (hasSale && originalPriceText.isNotBlank()) {
+                        if (productHasDiscountPricing && originalPriceText.isNotBlank()) {
                             Text(
                                 text = originalPriceText,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -338,18 +344,40 @@ fun ProductDetailsScreen(
                                 ),
                                 modifier = Modifier.padding(top = 10.dp)
                             )
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = 10.dp)
-                                    .clip(MaterialTheme.shapes.small)
-                                    .background(Color.Red)
-                            ) {
-                                Text(
-                                    text = "SALE",
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
+                            when {
+                                majorSalePdp -> {
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .padding(top = 10.dp)
+                                                .clip(MaterialTheme.shapes.small)
+                                                .background(Color.Red)
+                                    ) {
+                                        Text(
+                                            text = "SALE",
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                }
+                                minorSalePdp -> {
+                                    val minorOrange = Color(0xFFFF9800)
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .padding(top = 10.dp)
+                                                .clip(MaterialTheme.shapes.small)
+                                                .background(minorOrange)
+                                    ) {
+                                        Text(
+                                            text = formatMinorDiscountPercent(discount),
+                                            color = Color.Black,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

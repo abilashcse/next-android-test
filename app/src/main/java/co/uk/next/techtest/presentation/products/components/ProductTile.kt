@@ -35,6 +35,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import co.uk.next.techtest.domain.model.ProductSummary
+import co.uk.next.techtest.presentation.products.formatMinorDiscountPercent
+import co.uk.next.techtest.presentation.products.hasDiscountPricing
+import co.uk.next.techtest.presentation.products.isMajorSale
+import co.uk.next.techtest.presentation.products.showsMinorDiscountBadge
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -57,10 +61,12 @@ fun ProductTile(
         product.price?.let(currencyFormatter::format) ?: ""
     }
     val discount = product.discountPercentage ?: 0.0
-    val hasSale = discount > 0.0
+    val hasDiscountPricing = product.hasDiscountPricing()
+    val majorSaleChip = product.isMajorSale()
+    val showMinorBadge = product.showsMinorDiscountBadge()
     val originalPriceText = remember(product.price, discount) {
         val price = product.price ?: return@remember ""
-        if (!hasSale || discount >= 100.0) return@remember ""
+        if (!hasDiscountPricing || discount >= 100.0) return@remember ""
         val original = price / (1.0 - (discount / 100.0))
         currencyFormatter.format(original)
     }
@@ -137,7 +143,7 @@ fun ProductTile(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     Text(
-                        text = if (hasSale && originalPriceText.isNotBlank()) originalPriceText else " ",
+                        text = if (hasDiscountPricing && originalPriceText.isNotBlank()) originalPriceText else " ",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall.merge(
                             TextStyle(textDecoration = TextDecoration.LineThrough)
@@ -152,20 +158,41 @@ fun ProductTile(
                 )
             }
 
-            if (hasSale) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(8.dp)
-                        .clip(MaterialTheme.shapes.small)
-                        .background(Color.Red)
-                ) {
-                    Text(
-                        text = "SALE",
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+            when {
+                majorSaleChip -> {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopStart)
+                                .padding(8.dp)
+                                .clip(MaterialTheme.shapes.small)
+                                .background(Color.Red)
+                    ) {
+                        Text(
+                            text = "SALE",
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+                showMinorBadge -> {
+                    val minorOrange = Color(0xFFFF9800)
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopStart)
+                                .padding(8.dp)
+                                .clip(MaterialTheme.shapes.small)
+                                .background(minorOrange)
+                    ) {
+                        Text(
+                            text = formatMinorDiscountPercent(discount),
+                            color = Color.Black,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
 

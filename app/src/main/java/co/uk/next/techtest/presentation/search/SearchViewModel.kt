@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.uk.next.techtest.domain.model.ProductSummary
 import co.uk.next.techtest.domain.usecase.SearchProductsUseCase
+import co.uk.next.techtest.presentation.products.prioritizeMajorSales
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -137,7 +138,8 @@ class SearchViewModel(
             .onSuccess { page ->
                 if (generation != requestGeneration) return@onSuccess
                 total = page.total
-                items = if (isRefresh) page.items else (items + page.items)
+                items =
+                    (if (isRefresh) page.items else (items + page.items)).prioritizeMajorSales()
                 val endReached = items.size >= (total ?: 0)
                 _uiState.value =
                     SearchUiState.Success(

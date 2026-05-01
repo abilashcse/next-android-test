@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.uk.next.techtest.domain.model.ProductSummary
 import co.uk.next.techtest.domain.usecase.GetProductsPageUseCase
+import co.uk.next.techtest.presentation.products.prioritizeMajorSales
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,7 +55,8 @@ class ProductsViewModel(
         getProductsPage(limit = pageSize, skip = skip)
             .onSuccess { page ->
                 total = page.total
-                items = if (isRefresh) page.items else (items + page.items)
+                items =
+                    (if (isRefresh) page.items else (items + page.items)).prioritizeMajorSales()
                 val endReached = items.size >= (total ?: 0)
                 _uiState.value =
                     ProductsListUiState.Success(

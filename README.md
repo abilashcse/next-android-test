@@ -56,7 +56,9 @@ Completed: **User Stories 1, 2, 3, 4, and 5**.
 
 - **User Story 1 (Priority 1) – List Tile UI**
   - Product tile shows **thumbnail**, **title (max 2 lines)**, **brand**, and **price**.
-  - PLP tile supports **SALE** badge (red background, white text), **favourite** toggle, and **golden star rating**.
+  - Discount badge: red **SALE** only when **discount ≥ 50%**; otherwise (0–50%) an **orange** chip shows **percentage OFF** (e.g. `12% OFF`); no chip at 0%. Strikethrough original price still applies whenever discount is greater than 0.
+  - PLP and **Search** lists **prioritise** major-sale items (≥ 50%) at the top among **loaded** pages (stable partition after each API merge; pagination `skip` unchanged).
+  - **favourite** toggle and **golden star rating**.
   - Image fallback uses a simple placeholder when thumbnail is missing.
 
 - **User Story 2 (Priority 3) – Product List Grid Layout**
