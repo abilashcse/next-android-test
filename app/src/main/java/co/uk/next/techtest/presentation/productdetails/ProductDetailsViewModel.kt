@@ -3,6 +3,7 @@ package co.uk.next.techtest.presentation.productdetails
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.uk.next.techtest.domain.model.toProductSummary
+import co.uk.next.techtest.domain.repository.BagProductsRepository
 import co.uk.next.techtest.domain.repository.SavedProductsRepository
 import co.uk.next.techtest.domain.usecase.GetProductDetailsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +16,8 @@ import kotlinx.coroutines.launch
 
 class ProductDetailsViewModel(
     private val getProductDetails: GetProductDetailsUseCase,
-    private val savedProductsRepository: SavedProductsRepository
+    private val savedProductsRepository: SavedProductsRepository,
+    private val bagProductsRepository: BagProductsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProductDetailsUiState>(ProductDetailsUiState.Loading)
@@ -26,6 +28,14 @@ class ProductDetailsViewModel(
     val isSaved: StateFlow<Boolean> =
         combine(
             savedProductsRepository.observeSavedProductIds(),
+            activeProductId
+        ) { ids, productId ->
+            productId != null && productId in ids
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val isInBag: StateFlow<Boolean> =
+        combine(
+            bagProductsRepository.observeBagProductIds(),
             activeProductId
         ) { ids, productId ->
             productId != null && productId in ids
@@ -50,6 +60,13 @@ class ProductDetailsViewModel(
         val product = (_uiState.value as? ProductDetailsUiState.Success)?.product ?: return
         viewModelScope.launch {
             savedProductsRepository.toggleSaved(product.toProductSummary())
+        }
+    }
+
+    fun toggleBag() {
+        val product = (_uiState.value as? ProductDetailsUiState.Success)?.product ?: return
+        viewModelScope.launch {
+            bagProductsRepository.toggleBag(product.toProductSummary())
         }
     }
 }

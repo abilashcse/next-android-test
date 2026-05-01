@@ -69,6 +69,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.focus.FocusRequester
@@ -82,6 +83,7 @@ import co.uk.next.techtest.presentation.products.formatMinorDiscountPercent
 import co.uk.next.techtest.presentation.products.hasDiscountPricing
 import co.uk.next.techtest.presentation.products.isMajorSaleDiscount
 import co.uk.next.techtest.presentation.products.showsMinorDiscountBadge
+import co.uk.next.techtest.R
 import org.koin.compose.viewmodel.koinViewModel
 import java.text.NumberFormat
 import java.util.Locale
@@ -135,6 +137,7 @@ fun ProductDetailsScreen(
             val product = state.product
             val currencyFormatter = NumberFormat.getCurrencyInstance(Locale.UK)
             val isSaved by viewModel.isSaved.collectAsState()
+            val isInBag by viewModel.isInBag.collectAsState()
             val bringIntoViewRequester = remember { BringIntoViewRequester() }
             val scope = rememberCoroutineScope()
             val latestOnBack by rememberUpdatedState(onBack)
@@ -299,10 +302,17 @@ fun ProductDetailsScreen(
                                 .padding(horizontal = 16.dp, vertical = 12.dp)
                         ) {
                             Button(
-                                onClick = { /* CTA placeholder */ },
+                                onClick = { viewModel.toggleBag() },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(text = "Add to Cart")
+                                Text(
+                                    text =
+                                        if (isInBag) {
+                                            stringResource(R.string.pdp_remove_from_bag)
+                                        } else {
+                                            stringResource(R.string.pdp_add_to_bag)
+                                        }
+                                )
                             }
                         }
                     }

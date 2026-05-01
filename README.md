@@ -7,7 +7,7 @@ This repository is a Jetpack Compose Android app that consumes DummyJSON’s Pro
 - **Architecture**: Clean-ish **MVVM + UDF** (single `UiState` per screen)
 - **DI**: **Koin**
 - **Networking**: **Ktor** + `kotlinx.serialization`
-- **Local storage**: **Room** (saved product summaries + timestamps), **KSP** for the Room compiler
+- **Local storage**: **Room** (saved and **bag** product summaries + timestamps; DB migrations when the schema grows), **KSP** for the Room compiler
 - **Image loading**: **Coil (compose)**
 - **Navigation**: `navigation-compose`
 - **Connectivity**: `ConnectivityManager` default network callback (`NetworkMonitor`) for app-wide offline UI
@@ -16,7 +16,7 @@ This repository is a Jetpack Compose Android app that consumes DummyJSON’s Pro
 ## Architecture overview (high level)
 - **`core/`**: DI modules, navigation, theme, **network connectivity** (`NetworkMonitor`)
 - **`core/ui/shell/`**: app chrome (top app bar + bottom navigation) + shell state
-- **`data/`**: DTOs + API client + repository implementations (**products** remote + **saved** Room)
+- **`data/`**: DTOs + API client + repository implementations (**products** remote + **saved** / **bag** Room)
 - **`domain/`**: models + repository interface + use cases
 - **`presentation/`**: Compose screens + ViewModels + `UiState`
 
@@ -44,14 +44,14 @@ flowchart TB
   subgraph Domain["Domain - Clean Architecture"]
     direction TB
     UC["Use cases: GetProductsPage, SearchProducts, GetProductDetails"]
-    Contracts["Repository contracts and models: ProductsRepository, SavedProductsRepository, ProductSummary, ProductDetails"]
+    Contracts["Repository contracts and models: ProductsRepository, SavedProductsRepository, BagProductsRepository, ProductSummary, ProductDetails"]
     UC --> Contracts
   end
 
   subgraph Data["Data layer"]
     direction TB
-    Impl["Repository implementations: ProductsRepositoryImpl, SavedProductsRepositoryImpl"]
-    Sources["Ktor and DTOs, Room saved_products table"]
+    Impl["Repository implementations: ProductsRepositoryImpl, SavedProductsRepositoryImpl, BagProductsRepositoryImpl"]
+    Sources["Ktor and DTOs, Room saved_products and bag_products tables"]
     Impl --> Sources
   end
 
@@ -60,7 +60,7 @@ flowchart TB
   Impl -.->|implements| Contracts
 ```
 
-**Runtime wiring (not separate layers):** `MainActivity` → `AppScaffold` (`NetworkMonitor`, chrome) → `TechTestNavHost` → screens above. Remote calls go **ProductsRepository** → **DummyJsonApiClient** → DummyJSON; saved products go **SavedProductsRepository** → Room.
+**Runtime wiring (not separate layers):** `MainActivity` → `AppScaffold` (`NetworkMonitor`, chrome) → `TechTestNavHost` → screens above. Remote calls go **ProductsRepository** → **DummyJsonApiClient** → DummyJSON; **SavedProductsRepository** and **BagProductsRepository** persist to Room.
 
 ## Implemented features
 
@@ -90,7 +90,7 @@ Completed: **User Stories 1, 2, 3, 4, and 5**.
 
 - **User Story 4 (Priority 2) – Product Details Page (PDP)**
   - Navigates from PLP → PDP.
-  - PDP displays: title, SKU (`id`), **image carousel** with dot indicator, price (sale/original), rating, brand/category, description, warranty/return/shipping info, and a sticky **Add to Cart** CTA.
+  - PDP displays: title, SKU (`id`), **image carousel** with dot indicator, price (sale/original), rating, brand/category, description, warranty/return/shipping info, and a sticky **Add to bag** / **Remove from bag** CTA (local bag storage).
   - **Save (heart)** in the top bar uses the same **local saved list** as the PLP/Search tiles (filled vs outline icon).
   - PDP supports **pinch-to-zoom + pan** on images while preserving **pager swiping** when not zoomed.
   - PDP shows **reviews** (name → stars → quoted comment → date formatted as `DD - Month - YYYY`), and tapping the rating near the price scrolls to the reviews section.
@@ -106,7 +106,7 @@ Completed: **User Stories 1, 2, 3, 4, and 5**.
 - App chrome is hosted in a dedicated **AppShell** (`AppScaffold`), not in feature screens.
 - Top app bar (title + cart icon) and bottom navigation (Home/Search/Saved/Bag/Account) are shown for top-level destinations.
 - Chrome is **hidden on PDP** (`product/{id}`) to keep the product details experience full-screen.
-- **Search** is a real **product search** screen. **Saved** shows **locally stored** favourites in the same grid/tile layout as the PLP; **empty state** when nothing is saved. **Bag** and **Account** remain **placeholder** tabs.
+- **Search** is a real **product search** screen. **Saved** shows **locally stored** favourites in the same grid/tile layout as the PLP; **empty state** when nothing is saved. **Bag** lists **locally stored** bag lines (same grid); **empty state** when the bag is empty. **Account** remains a **placeholder** tab.
 
 ### Bug fixes (from the challenge PDF)
 - **Bug 1 (Priority 1) – Crash on app load**
@@ -123,8 +123,8 @@ Completed: **User Stories 1, 2, 3, 4, and 5**.
   - Removed artificial delay from the API client and added loading UI states.
 
 ## Tests
-- **Unit (JVM)**: ViewModels (products, product details, **search**, shell where applicable), use cases, repository implementation (including **`/products/search`** MockEngine cases); **`FakeNetworkMonitor`** for connectivity-related logic without Robolectric; **`FakeSavedProductsRepository`** for saved-state wiring in ViewModel tests.
-- **androidTest**: `TestRunner` installs `TestTechTestApp` with a fake `ProductsRepository`, **`FakeSavedProductsRepository`**, **`NetworkMonitor` always online** by default, and regression checks (e.g. semantics / contrast on `app_root`).
+- **Unit (JVM)**: ViewModels (products, product details, **search**, shell where applicable), use cases, repository implementation (including **`/products/search`** MockEngine cases); **`FakeNetworkMonitor`** for connectivity-related logic without Robolectric; **`FakeSavedProductsRepository`** / **`FakeBagProductsRepository`** for local list wiring in ViewModel tests.
+- **androidTest**: `TestRunner` installs `TestTechTestApp` with a fake `ProductsRepository`, **`FakeSavedProductsRepository`**, **`FakeBagProductsRepository`**, **`NetworkMonitor` always online** by default, and regression checks (e.g. semantics / contrast on `app_root`).
 
 Run JVM tests:
 
@@ -151,7 +151,7 @@ Open the project in Android Studio and run the `app` configuration, or from CLI:
   - Add separate navigation graphs per tab if/when those features become real.
 
 - **UI polish**
-  - Replace **Bag** and **Account** placeholder tab content with real features.
+  - Replace **Account** placeholder tab content with a real feature (Bag is implemented with local storage).
   - Consider Window Size Classes for explicit compact/medium/expanded layouts.
 
 ## Notes / assumptions

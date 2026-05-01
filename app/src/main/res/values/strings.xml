@@ -10,4 +10,8 @@
     <string name="search_clear_content_description">Clear search</string>
     <string name="saved_empty_title">No saved items</string>
     <string name="saved_empty_message">Products you save with the heart icon will appear here.</string>
+    <string name="pdp_add_to_bag">Add to bag</string>
+    <string name="pdp_remove_from_bag">Remove from bag</string>
+    <string name="bag_empty_title">Your bag is empty</string>
+    <string name="bag_empty_message">Add items from product details to see them here.</string>
 </resources>

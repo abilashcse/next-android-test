@@ -9,6 +9,7 @@ import co.uk.next.techtest.domain.model.ProductsPage
 import co.uk.next.techtest.domain.model.ProductSummary
 import co.uk.next.techtest.domain.model.Review
 import co.uk.next.techtest.domain.repository.ProductsRepository
+import co.uk.next.techtest.domain.repository.BagProductsRepository
 import co.uk.next.techtest.domain.repository.SavedProductsRepository
 import co.uk.next.techtest.domain.usecase.GetProductDetailsUseCase
 import co.uk.next.techtest.domain.usecase.GetProductsPageUseCase
@@ -17,8 +18,10 @@ import co.uk.next.techtest.core.network.FakeNetworkMonitor
 import co.uk.next.techtest.core.network.NetworkMonitor
 import co.uk.next.techtest.presentation.productdetails.ProductDetailsViewModel
 import co.uk.next.techtest.presentation.products.ProductsViewModel
+import co.uk.next.techtest.presentation.bag.BagViewModel
 import co.uk.next.techtest.presentation.saved.SavedViewModel
 import co.uk.next.techtest.presentation.search.SearchViewModel
+import co.uk.next.techtest.testsupport.FakeBagProductsRepository
 import co.uk.next.techtest.testsupport.FakeSavedProductsRepository
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -110,15 +113,23 @@ class TestTechTestApp : Application() {
             module {
                 single<ProductsRepository> { fakeRepo }
                 single<SavedProductsRepository> { FakeSavedProductsRepository() }
+                single<BagProductsRepository> { FakeBagProductsRepository() }
                 single<NetworkMonitor> { FakeNetworkMonitor(initialOnline = true) }
                 factory { GetProductsPageUseCase(repository = get()) }
                 factory { GetProductDetailsUseCase(repository = get()) }
                 factory { SearchProductsUseCase(repository = get()) }
                 viewModel { AppShellViewModel() }
                 viewModel { ProductsViewModel(getProductsPage = get(), savedProductsRepository = get()) }
-                viewModel { ProductDetailsViewModel(getProductDetails = get(), savedProductsRepository = get()) }
+                viewModel {
+                    ProductDetailsViewModel(
+                        getProductDetails = get(),
+                        savedProductsRepository = get(),
+                        bagProductsRepository = get()
+                    )
+                }
                 viewModel { SearchViewModel(searchProducts = get(), savedProductsRepository = get()) }
                 viewModel { SavedViewModel(savedProductsRepository = get()) }
+                viewModel { BagViewModel(bagProductsRepository = get(), savedProductsRepository = get()) }
             }
 
         startKoin {

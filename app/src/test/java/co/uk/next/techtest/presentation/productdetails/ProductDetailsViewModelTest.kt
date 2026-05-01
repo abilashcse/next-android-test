@@ -1,6 +1,7 @@
 package co.uk.next.techtest.presentation.productdetails
 
 import co.uk.next.techtest.MainDispatcherRule
+import co.uk.next.techtest.testsupport.FakeBagProductsRepository
 import co.uk.next.techtest.testsupport.FakeSavedProductsRepository
 import co.uk.next.techtest.domain.model.Dimensions
 import co.uk.next.techtest.domain.model.Meta
@@ -77,7 +78,8 @@ class ProductDetailsViewModelTest {
         val vm =
             ProductDetailsViewModel(
                 getProductDetails = useCase,
-                savedProductsRepository = FakeSavedProductsRepository()
+                savedProductsRepository = FakeSavedProductsRepository(),
+                bagProductsRepository = FakeBagProductsRepository()
             )
         vm.load(productId = 123)
         advanceUntilIdle()
@@ -105,7 +107,8 @@ class ProductDetailsViewModelTest {
         val vm =
             ProductDetailsViewModel(
                 getProductDetails = useCase,
-                savedProductsRepository = FakeSavedProductsRepository()
+                savedProductsRepository = FakeSavedProductsRepository(),
+                bagProductsRepository = FakeBagProductsRepository()
             )
         vm.load(productId = 1)
         advanceUntilIdle()
