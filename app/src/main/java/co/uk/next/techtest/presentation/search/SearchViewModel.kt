@@ -9,8 +9,11 @@ import co.uk.next.techtest.presentation.products.prioritizeMajorSales
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class SearchViewModel(
@@ -22,12 +25,23 @@ class SearchViewModel(
     val queryDraft: StateFlow<String> = _queryDraft.asStateFlow()
 
     private val _uiState = MutableStateFlow<SearchUiState>(SearchUiState.Idle)
-    val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
+
+    private val savedIds: StateFlow<Set<Int>> =
+        savedProductsRepository
+            .observeSavedProductIds()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    val uiState: StateFlow<SearchUiState> =
+        combine(_uiState, savedIds) { state, ids ->
+            when (state) {
+                is SearchUiState.Success -> state.copy(favouriteIds = ids)
+                else -> state
+            }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value)
 
     private val pageSize = 30
     private var total: Int? = null
     private var items: List<ProductSummary> = emptyList()
-    private var latestSavedIds: Set<Int> = emptySet()
     private var isRequestInFlight: Boolean = false
     private var activeQuery: String = ""
     private var requestGeneration: Int = 0
@@ -36,15 +50,6 @@ class SearchViewModel(
     private val debounceMs = 350L
 
     init {
-        viewModelScope.launch {
-            savedProductsRepository.observeSavedProductIds().collect { ids ->
-                latestSavedIds = ids
-                val current = _uiState.value
-                if (current is SearchUiState.Success) {
-                    _uiState.value = current.copy(favouriteIds = ids)
-                }
-            }
-        }
     }
 
     fun onQueryChange(raw: String) {
@@ -156,7 +161,7 @@ class SearchViewModel(
                     SearchUiState.Success(
                         activeQuery = query,
                         items = items,
-                        favouriteIds = latestSavedIds,
+                        favouriteIds = savedIds.value,
                         isAppending = false,
                         endReached = endReached
                     )

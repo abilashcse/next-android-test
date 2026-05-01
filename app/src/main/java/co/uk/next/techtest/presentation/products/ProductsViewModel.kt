@@ -7,8 +7,11 @@ import co.uk.next.techtest.domain.repository.SavedProductsRepository
 import co.uk.next.techtest.domain.usecase.GetProductsPageUseCase
 import co.uk.next.techtest.presentation.products.prioritizeMajorSales
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class ProductsViewModel(
@@ -17,24 +20,26 @@ class ProductsViewModel(
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProductsListUiState>(ProductsListUiState.Loading)
-    val uiState: StateFlow<ProductsListUiState> = _uiState.asStateFlow()
+
+    private val savedIds: StateFlow<Set<Int>> =
+        savedProductsRepository
+            .observeSavedProductIds()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    val uiState: StateFlow<ProductsListUiState> =
+        combine(_uiState, savedIds) { state, ids ->
+            when (state) {
+                is ProductsListUiState.Success -> state.copy(favouriteIds = ids)
+                else -> state
+            }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value)
 
     private val pageSize = 30
     private var total: Int? = null
     private var items: List<ProductSummary> = emptyList()
-    private var latestSavedIds: Set<Int> = emptySet()
     private var isRequestInFlight: Boolean = false
 
     init {
-        viewModelScope.launch {
-            savedProductsRepository.observeSavedProductIds().collect { ids ->
-                latestSavedIds = ids
-                val current = _uiState.value
-                if (current is ProductsListUiState.Success) {
-                    _uiState.value = current.copy(favouriteIds = ids)
-                }
-            }
-        }
         refresh()
     }
 
@@ -72,7 +77,7 @@ class ProductsViewModel(
                 _uiState.value =
                     ProductsListUiState.Success(
                         items = items,
-                        favouriteIds = latestSavedIds,
+                        favouriteIds = savedIds.value,
                         isAppending = false,
                         endReached = endReached
                     )
