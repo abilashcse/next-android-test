@@ -30,28 +30,28 @@ The diagram below shows **MVVM** inside the presentation layer and how it sits o
 
 ```mermaid
 flowchart TB
-  subgraph MVVM["Presentation — MVVM"]
+  subgraph MVVM["Presentation - MVVM"]
     direction TB
-    subgraph View["View"]
-      Screens["`@Composable` screens + `NavHost`<br/>`AppScaffold`, feature UIs"]
+    subgraph ViewLayer["View"]
+      Screens["Compose UI: screens, NavHost, AppScaffold"]
     end
-    subgraph VM["ViewModel"]
-      VMs["`ViewModel` + `UiState`<br/>`StateFlow`, user-event handlers"]
+    subgraph VMLayer["ViewModel"]
+      VMs["ViewModel, UiState, StateFlow, event handlers"]
     end
     Screens <-->|state / events| VMs
   end
 
-  subgraph Domain["Domain — Clean Architecture"]
+  subgraph Domain["Domain - Clean Architecture"]
     direction TB
-    UC["Use cases<br/>`GetProductsPageUseCase`, `SearchProductsUseCase`,<br/>`GetProductDetailsUseCase`"]
-    Contracts["Repository abstractions + models<br/>`ProductsRepository`, `SavedProductsRepository`,<br/>`ProductSummary`, `ProductDetails`, …"]
+    UC["Use cases: GetProductsPage, SearchProducts, GetProductDetails"]
+    Contracts["Repository contracts and models: ProductsRepository, SavedProductsRepository, ProductSummary, ProductDetails"]
     UC --> Contracts
   end
 
   subgraph Data["Data layer"]
     direction TB
-    Impl["Repository implementations<br/>`ProductsRepositoryImpl`, `SavedProductsRepositoryImpl`"]
-    Sources["Sources<br/>Ktor + DTOs • Room (`saved_products`)"]
+    Impl["Repository implementations: ProductsRepositoryImpl, SavedProductsRepositoryImpl"]
+    Sources["Ktor and DTOs, Room saved_products table"]
     Impl --> Sources
   end
 
